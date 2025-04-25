@@ -1,0 +1,163 @@
+import { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { FirebaseApp, initializeApp } from 'firebase/app';
+import { getDatabase, ref, set, get } from 'firebase/database';
+import { motion } from 'framer-motion';
+
+// Configuração do Firebase
+const firebaseConfig = {
+  apiKey: 'YOUR_API_KEY',
+  authDomain: 'YOUR_PROJECT_ID.firebaseapp.com',
+  databaseURL: 'https://YOUR_PROJECT_ID.firebaseio.com',
+  projectId: 'YOUR_PROJECT_ID',
+  storageBucket: 'YOUR_PROJECT_ID.appspot.com',
+  messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+  appId: 'YOUR_APP_ID',
+};
+
+const app = initializeApp(firebaseConfig);
+const database = getDatabase(app);
+
+// Componente principal
+export default function SkillBagApp() {
+  const [currentChallenge, setCurrentChallenge] = useState('');
+  const [completedChallenges, setCompletedChallenges] = useState([]);
+  const [userName, setUserName] = useState('');
+  const [userChallenges, setUserChallenges] = useState([]);
+
+  // Função para gerar desafio aleatório
+  const challenges = [
+    "Ajude um colega com dificuldade",
+    "Dê uma ideia para melhorar algo na escola",
+    "Escute a opinião de alguém diferente de você",
+  ];
+
+  const generateChallenge = () => {
+    const random = challenges[Math.floor(Math.random() * challenges.length)];
+    setCurrentChallenge(random);
+  };
+
+  const completeChallenge = () => {
+    if (currentChallenge) {
+      setCompletedChallenges([...completedChallenges, currentChallenge]);
+      setCurrentChallenge('');
+      saveChallengeToDatabase();
+    }
+  };
+
+  // Função para salvar o desafio no Firebase
+  const saveChallengeToDatabase = () => {
+    if (userName) {
+      const challengeRef = ref(database, 'challenges/' + userName);
+      set(challengeRef, userChallenges).catch(console.error);
+    }
+  };
+
+  // Função para obter desafios anteriores do Firebase
+  const fetchChallengesFromDatabase = async () => {
+    if (userName) {
+      const challengeRef = ref(database, 'challenges/' + userName);
+      const snapshot = await get(challengeRef);
+      if (snapshot.exists()) {
+        setUserChallenges(snapshot.val());
+      }
+    }
+  };
+
+  useEffect(() => {
+    fetchChallengesFromDatabase();
+  }, [userName]);
+
+  // Função para lidar com o nome do usuário
+  const handleUserNameChange = (e) => {
+    setUserName(e.target.value);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500">
+      <motion.h1
+        className="text-5xl font-bold text-white mb-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1 }}
+      >
+        SkillBag
+      </motion.h1>
+
+      <motion.div
+        className="mb-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 0.5 }}
+      >
+        <TextField
+          label="Digite seu nome"
+          value={userName}
+          onChange={handleUserNameChange}
+          className="mb-4"
+        />
+      </motion.div>
+
+      <motion.div
+        className="w-full max-w-md mb-6"
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 1, delay: 1 }}
+      >
+        <Card className="bg-white rounded-xl shadow-lg p-6">
+          <CardContent className="flex flex-col items-center">
+            {currentChallenge ? (
+              <>
+                <p className="text-xl mb-4 text-gray-700">Desafio:</p>
+                <p className="text-center text-2xl font-semibold mb-6 text-gray-800">
+                  "{currentChallenge}"
+                </p>
+                <Button
+                  onClick={completeChallenge}
+                  className="w-full bg-green-500 text-white hover:bg-green-600 transition-colors"
+                >
+                  Marcar como Concluído
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={generateChallenge}
+                className="w-full bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              >
+                Gerar Novo Desafio
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <motion.div
+        className="w-full max-w-md"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1, delay: 1.5 }}
+      >
+        <h2 className="text-2xl font-semibold text-white mb-4">Desafios Concluídos:</h2>
+        <ul className="list-disc list-inside space-y-2 text-white">
+          {completedChallenges.length === 0 ? (
+            <p className="text-gray-300">Nenhum desafio concluído ainda.</p>
+          ) : (
+            completedChallenges.map((challenge, index) => (
+              <motion.li
+                key={index}
+                className="text-lg"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: index * 0.2 }}
+              >
+                {challenge}
+              </motion.li>
+            ))
+          )}
+        </ul>
+      </motion.div>
+    </div>
+  );
+}
